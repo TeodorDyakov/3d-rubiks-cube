@@ -210,8 +210,31 @@
                 40 : 'D'
             }
 
+            var previousTouch;
+
             document.body.addEventListener("keydown", onDocumentKeyDown, false);
-            
+            document.body.addEventListener("touchmove", onTouchMove);
+
+            document.body.addEventListener("touchend", (e) => {
+                previousTouch = null;
+            });
+
+            function onTouchMove(e) {
+                if (e.type == 'touchmove') {
+                    const touch = e.touches[0];
+                    if (previousTouch) {
+                        // be aware that these only store the movement of the first touch in the touches array
+                        e.movementX = touch.pageX - previousTouch.pageX;
+                        e.movementY = touch.pageY - previousTouch.pageY;
+
+                        cube.rotation.y += e.movementX * 0.005;
+                        cube.rotation.x += e.movementY * 0.005;
+                    };
+
+                    previousTouch = touch;
+                }
+            }
+
             function onDocumentKeyDown(event) {
                 var code = (event.keyCode);
                 if (code >= 37 && code <= 40 && !animation && !mouseDown) {
