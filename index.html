@@ -15,9 +15,9 @@
         
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
         
-        <script src="three.min.js"></script>
-        <script src="lil-gui.umd.min.js"></script>
-        <script src="vax.js"></script>
+        <script src="lib/three.min.js"></script>
+        <script src="lib/lil-gui.umd.min.js"></script>
+        <script src="lib/vax.js"></script>
     </head>
     
     <body>
@@ -64,7 +64,7 @@
                 placeStickersOnSide('U'); 
             }
         
-			//local
+            //local
             function getSide(side){
                 var group = [];
 
@@ -79,7 +79,7 @@
                         if(Math.abs(-obj.position.z - 5.5) < 0.1){
                             group.push(cubelets[i]);
                         }
-					}else if(side == 'L'){
+                    }else if(side == 'L'){
                         if(Math.abs(-obj.position.x - 5.5) < 0.1){
                             group.push(cubelets[i]);    
                         }
@@ -152,28 +152,28 @@
                 var basisX_n = basisX.clone().negate();
                 var basisY_n = basisY.clone().negate();
                 var basisZ_n = basisZ.clone().negate();
-				
-				const sideToBases = {
-					'F': basisZ,
-					'B': basisZ_n,
-					'L': basisX_n,
-					'R': basisX,
-					'U': basisY,
-					'D': basisY_n,
-				}
+                
+                const sideToBases = {
+                    'F': basisZ,
+                    'B': basisZ_n,
+                    'L': basisX_n,
+                    'R': basisX,
+                    'U': basisY,
+                    'D': basisY_n,
+                }
 
                 var smallestAngle = Math.PI;
                 var closestAxis = null;
                 for(const side in sideToBases){
-					var basis = sideToBases[side];
+                    var basis = sideToBases[side];
                     var angle = Math.abs(basis.angleTo(axis));
-					
+                    
                     if(angle < smallestAngle){
                         smallestAngle = angle;
                         closestAxis = side;
                     }
                 }
-				return closestAxis;
+                return closestAxis;
             }
 
             function rotateSide(side, angle){
@@ -191,15 +191,15 @@
 
             var canvas = renderer.domElement;
             canvas.addEventListener('mousemove', onMouseMove);
-			var mouseDown = false;
+            var mouseDown = false;
 
-			document.body.onmousedown = function() { 
-				mouseDown = true;
-			}
+            document.body.onmousedown = function() { 
+                mouseDown = true;
+            }
 
-			document.body.onmouseup = function() {
-				mouseDown = false;
-			}
+            document.body.onmouseup = function() {
+                mouseDown = false;
+            }
 
             var sideToRotate;
 
@@ -221,10 +221,10 @@
             }
 
             function onMouseMove(event) {
-				if(mouseDown && !animation && !scrambleAnimation) {
-					cube.rotation.y += event.movementX * 0.005;
-					cube.rotation.x += event.movementY * 0.005;
-				}
+                if(mouseDown && !animation && !scrambleAnimation) {
+                    cube.rotation.y += event.movementX * 0.005;
+                    cube.rotation.x += event.movementY * 0.005;
+                }
             }
             
             createCube();
