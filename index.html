@@ -1,19 +1,39 @@
 <html>
     <head>
         <style>
-            #info {
+            .info {
             position: absolute;
             top: 10px;
-            width: 100%;
+            /* width: 100%; */
             text-align: center;
             z-index: 100;
             display:block;
+            font-family: Ariel, sans-serif;
         }
 
+        #pc{
+            width: 100%;
+        }
+
+        #mobile{
+            width : 60%;
+        }
+
+        @media screen and (max-width: 800px) {
+            #pc{
+                display: none;
+            }
+        }
+
+        @media screen and (min-width: 800px) {
+            #mobile{
+                display: none;
+            }
+        }
+        
         .lil-gui {
             --width: 20%; 
             --height: 20%;
-            /* --name-width: 65%; */
         }
         </style>
         <title>Rubik's cube</title>
@@ -28,8 +48,9 @@
     </head>
     
     <body>
-        <div id="info">Hold and move the mouse to rotate the cube</div>
-
+        <div id="pc" class = "info">Hold and move the mouse to rotate the cube, use the arrow keys or the controls on the right to turn sides.</div>
+        <div id="mobile" class = "info">Swipe to rotate the cube, use the controls on the right to turn sides.</div>
+        
         <script src = "cube.js">
         </script>
     </body>

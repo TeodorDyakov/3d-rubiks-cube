@@ -150,12 +150,11 @@ function getClosestAxis(side){
 }
 
 function rotateSide(side, angle){
-    var s = getClosestAxis(side);
-    var local = getSide(s);
+    var local = getSide(side);
 
     for(const el of local){
         const v = new THREE.Vector3(el.position.x, el.position.y, el.position.z);
-        var axis = sideToAxes[s];
+        var axis = sideToAxes[side];
         v.applyAxisAngle(axis, angle);
         el.position.set(v.x, v.y, v.z);
         el.rotateOnWorldAxis(axis, angle);
@@ -210,14 +209,14 @@ function onTouchMove(e) {
 
 function onDocumentKeyDown(event) {
     var code = (event.keyCode);
-    if (code >= 37 && code <= 40 && !animation && !mouseDown) {
+    if (code >= 37 && code <= 40 && !animation) {
         sideToRotate = keyToFace[code];
-        animation = true;
+        turnAnimation(sideToRotate)();
     }
 }
 
 function onMouseMove(event) {
-    if(mouseDown && !animation && !scrambleAnimation) {
+    if(mouseDown) {
         cube.rotation.y += event.movementX * 0.005;
         cube.rotation.x += event.movementY * 0.005;
     }
@@ -262,8 +261,8 @@ const myObject = {
 
 function turnAnimation(side){
     return function(){
-        if(!animation && !scrambleAnimation && !mouseDown){
-            sideToRotate = side;
+        if(!animation && !scrambleAnimation){
+            sideToRotate = getClosestAxis(side);
             animation = true;
         }
     }
@@ -276,6 +275,7 @@ gui.add( myObject, 'F' ); // Button
 gui.add( myObject, 'B' ); // Button
 gui.add( myObject, 'L' ); // Button
 gui.add( myObject, 'R' ); // Button
+
 
 function animate( t ) {
     if(animation){
