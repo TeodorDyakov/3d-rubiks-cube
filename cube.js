@@ -252,53 +252,20 @@ var gui = new lil.GUI();
 
 const myObject = {
     Scramble : scramble,
-    U : rotateU, 
-    D : rotateD,
-    F : rotateF, 
-    B : rotateB,
-    L : rotateL, 
-    R : rotateR,
+    U : turnAnimation('U'), 
+    D : turnAnimation('D'),
+    F : turnAnimation('F'), 
+    B : turnAnimation('B'),
+    L : turnAnimation('L'), 
+    R : turnAnimation('R'),
 };
 
-function rotateU(){
-    if(!animation && !scrambleAnimation && !mouseDown){
-        sideToRotate = 'U';
-        animation = true;
-    }
-}
-
-function rotateD(){
-    if(!animation && !scrambleAnimation && !mouseDown){
-        sideToRotate = 'D';
-        animation = true;
-    }
-}
-
-function rotateL(){
-    if(!animation && !scrambleAnimation && !mouseDown){
-        sideToRotate = 'L';
-        animation = true;
-    }
-}
-
-function rotateR(){
-    if(!animation && !scrambleAnimation && !mouseDown){
-        sideToRotate = 'R';
-        animation = true;
-    }
-}
-
-function rotateB(){
-    if(!animation && !scrambleAnimation && !mouseDown){
-        sideToRotate = 'B';
-        animation = true;
-    }
-}
-
-function rotateF(){
-    if(!animation && !scrambleAnimation && !mouseDown){
-        sideToRotate = 'F';
-        animation = true;
+function turnAnimation(side){
+    return function(){
+        if(!animation && !scrambleAnimation && !mouseDown){
+            sideToRotate = side;
+            animation = true;
+        }
     }
 }
 
