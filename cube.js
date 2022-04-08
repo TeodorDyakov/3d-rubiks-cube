@@ -186,6 +186,7 @@ var previousTouch;
 
 document.body.addEventListener("keydown", onDocumentKeyDown, false);
 document.body.addEventListener("touchmove", onTouchMove);
+document.body.addEventListener("keyup", onDocumentKeyUp, false);
 
 document.body.addEventListener("touchend", (e) => {
     previousTouch = null;
@@ -198,7 +199,7 @@ function onTouchMove(e) {
             // be aware that these only store the movement of the first touch in the touches array
             e.movementX = touch.pageX - previousTouch.pageX;
             e.movementY = touch.pageY - previousTouch.pageY;
-
+            // console.log(e.movementX);
             cube.rotation.y += e.movementX * 0.005;
             cube.rotation.x += e.movementY * 0.005;
         };
@@ -207,11 +208,27 @@ function onTouchMove(e) {
     }
 }
 
+var turnDir = 1;
+var isCtrlPressed = 0;
+
 function onDocumentKeyDown(event) {
     var code = (event.keyCode);
-    if (code >= 37 && code <= 40 && !animation) {
+    
+    if(code == 17){
+        isCtrlPressed = true;
+    }
+
+    if (code >= 37 && code <= 40 && !animation && !scrambleAnimation) {
         sideToRotate = keyToFace[code];
+        console.log(isCtrlPressed);
         turnAnimation(sideToRotate)();
+    }
+}
+
+function onDocumentKeyUp(event) {
+    var code = (event.keyCode);
+    if(code == 17){
+        isCtrlPressed = false;
     }
 }
 
@@ -243,8 +260,6 @@ function chooseRandomSide(){
     return sides[THREE.MathUtils.randInt(0, sides.length-1)];
 }
 
-const d_angle = -Math.PI/50;
-const d_angle_scramble = -Math.PI/20;
 var angle = 0;
 
 var gui = new lil.GUI();
@@ -262,6 +277,12 @@ const myObject = {
 function turnAnimation(side){
     return function(){
         if(!animation && !scrambleAnimation){
+            
+            console.log(isCtrlPressed);
+
+            if(isCtrlPressed){
+                turnDir = -1;
+            }
             sideToRotate = getClosestAxis(side);
             animation = true;
         }
@@ -276,29 +297,37 @@ gui.add( myObject, 'B' ); // Button
 gui.add( myObject, 'L' ); // Button
 gui.add( myObject, 'R' ); // Button
 
+var rotationFrame = 0;
+const rotationDuration = 25;
+
+var scrambleFrame = 0;
+const scrambleDuration = 10;
+
+const d_angle = -Math.PI/(2 * rotationDuration);
+const d_angle_scramble = -Math.PI/ (2 * scrambleDuration);
+
 
 function animate( t ) {
     if(animation){
-        if(angle + d_angle > -Math.PI/2){
-            rotateSide(sideToRotate, d_angle);
-            angle += d_angle;
+        if(rotationFrame < rotationDuration){
+            rotateSide(sideToRotate, d_angle * turnDir);
+            rotationFrame++;    
         }
         else{
-            rotateSide(sideToRotate, -Math.PI/2 - angle);
+            turnDir = 1;
+            rotationFrame = 0;
             animation = false;
-            angle = 0;
         }
     }
     else if(scrambleAnimation){
-        if(angle + d_angle > -Math.PI/2){
+        if(scrambleFrame < scrambleDuration){
             rotateSide(sideToRotate, d_angle_scramble);
-            angle += d_angle_scramble;
+            scrambleFrame++;
         }
         else{
-            rotateSide(sideToRotate, -Math.PI/2 - angle);
+            scrambleFrame = 0;
             scrambleIdx++;
             sideToRotate = chooseRandomSide();
-            angle = 0;
         }
 
         if(scrambleIdx == 30){

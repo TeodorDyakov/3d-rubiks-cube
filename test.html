@@ -1,0 +1,110 @@
+<html>
+    <head>
+        <style>
+     
+        </style>
+        <title>Rubik's cube</title>
+        <meta charset="utf-8">
+        
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        
+        <script src="lib/three.min.js"></script>
+        <script src="lib/lil-gui.umd.min.js"></script>
+        <script src="lib/vax.js"></script>
+
+    </head>
+    
+    <body>
+        <script>
+            //TODO 
+            //test the orbitcontrols thing - wehther we can get correct sides from rotated cube by by applying the camera matrix
+            //test whether we can get axis rotation by applying inverse transform to plane which is added to the cube
+            vaxInit();
+            var cubeGeometry = new THREE.BoxGeometry(15, 15, 15);
+            var material = new THREE.MeshLambertMaterial({color : 'grey'});
+            var cube = new THREE.Mesh(cubeGeometry, material);
+            // cube.set(20, 0, 0);
+            
+            var planeGeometry = new THREE.PlaneGeometry(0, 5, 5);
+            var sticker = new THREE.Mesh(planeGeometry, material);
+
+
+            // const sceneHelper = new THREE.AxesHelper( 20 );
+            // scene.add( sceneHelper );
+            
+            const axesHelper = new THREE.AxesHelper( 20 );
+            cube.add( axesHelper );
+            
+            
+            cube.rotation.x += (Math.PI/4);
+            cube.rotation.y -= (Math.PI/4);
+
+            scene.add(cube);
+            
+            var x_cube = new THREE.Vector3(0, 0, 0);
+            var y_cube = new THREE.Vector3(0, 0, 0);
+            var z_cube = new THREE.Vector3(0, 0, 0);
+            cube.updateMatrix();
+
+            var m = cube.matrix; 
+            m.extractBasis(x_cube, y_cube, z_cube);
+
+
+            var z = new THREE.Vector3(0, 0, 1);
+            var y = new THREE.Vector3(0, 1, 0);
+            var x= new THREE.Vector3(1, 0, 0);
+
+            console.log("x_cube:");
+            console.log(x_cube.x.toFixed(2) + ", " + x_cube.y.toFixed(2) +", " + x_cube.z.toFixed(2));
+            
+            console.log("y_cube:");
+            console.log(y_cube.x.toFixed(2) + ", " + y_cube.y.toFixed(2) + ", " + y_cube.z.toFixed(2));
+
+            console.log("z_cube:");
+            console.log(z_cube.x.toFixed(2) + ", " + z_cube.y.toFixed(2) + ", " + z_cube.z.toFixed(2));
+
+            
+            var angle = x_cube.angleTo(z);
+            console.log("x_cube angle to z: "  + angle.toFixed(2));
+
+            angle = y_cube.angleTo(z);
+            console.log("y_cube angle to z: "  + angle.toFixed(2));
+
+            angle = z_cube.angleTo(z);
+            console.log("z_cube angle to z: "  + angle.toFixed(2));
+
+            angle = x_cube.angleTo(y);
+            console.log("x_cube angle to y: "  + angle.toFixed(2));
+            
+            angle = y_cube.angleTo(y);
+            console.log("y_cube angle to y: "  + angle.toFixed(2));
+            
+            angle = z_cube.angleTo(y);
+            console.log("z_cube angle to y: "  + angle.toFixed(2));
+            
+            angle = x_cube.angleTo(x);
+            console.log("x_cube angle to x: "  + angle.toFixed(2));
+            
+            angle = y_cube.angleTo(x);
+            console.log("y_cube angle to x: "  + angle.toFixed(2));
+            
+            angle = z_cube.angleTo(x);
+            console.log("z_cube angle to x: "  + angle.toFixed(2));
+            
+
+            // for(let i = 0; i < 100; i++){
+            //     var axis = new THREE.MathUtils.randInt(0, 2);
+            //     var dir = new THREE.MathUtils.randInt(0, 1);
+            //     dir = dir == 0 ? -1 : 1;
+            //     if(axis == 0){
+            //         cube.rotateX(Math.PI/2 * dir);
+            //     }else if(axis == 1){
+            //         cube.rotateY(Math.PI/2 * dir);
+            //     }else if(axis == 2){
+            //         cube.rotateX(Math.PI/2 * dir);
+            //     }
+            // } 
+
+        </script>
+    </body>
+</html>
