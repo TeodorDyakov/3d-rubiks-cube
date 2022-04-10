@@ -37,37 +37,41 @@ function createCube(){
     placeStickersOnSide('U'); 
 }
 
-//local
+
 function getSide(side){
+    const gapSz = 0.5;
+    const pos = cubeletSz + gapSz;
+    //x -0, y - 1, z - 2
+    var faceToAxis = {
+        'F': 2,
+        'B': 2,
+        'U': 1,
+        'D' : 1,
+        'L' : 0,
+        'R' : 0
+    }
+
+    var faceToCoordVal = {
+        'F': pos,
+        'B': -pos,
+        'U': pos,
+        'D' : -pos,
+        'L' : -pos,
+        'R' : pos
+    }
+
+    return getSideByCoord(faceToAxis[side], faceToCoordVal[side]);
+}
+
+//coordIdx: 0, 1, 2 (x-0, y- 1, z- 2)
+// coord value: -5.5, 0, or 5.5. 5.5 == cubeletSz + gapSz
+function getSideByCoord(coordIdx, coordValue){
     var group = [];
-
     for(let i = 0; i < cubelets.length; i++){
-        var obj = cubelets[i];
-
-        if(side == 'F'){    
-            if(Math.abs(obj.position.z - 5.5) < 0.1){
-                group.push(cubelets[i]);
-            }
-        }else if(side == 'B'){
-            if(Math.abs(-obj.position.z - 5.5) < 0.1){
-                group.push(cubelets[i]);
-            }
-        }else if(side == 'L'){
-            if(Math.abs(-obj.position.x - 5.5) < 0.1){
-                group.push(cubelets[i]);    
-            }
-        }else if(side == 'R'){
-            if(Math.abs(obj.position.x - 5.5) < 0.1){
-                group.push(cubelets[i]);
-            }
-        } else if(side == 'U'){
-            if(Math.abs(obj.position.y - 5.5) < 0.1){
-                group.push(cubelets[i]);
-            }
-        } else if(side == 'D'){
-            if(Math.abs(-obj.position.y - 5.5) < 0.1){
-                group.push(cubelets[i]);
-            }
+        var arr = cubelets[i].position.toArray();
+        var cubeletCoordVal = arr[coordIdx];
+        if(Math.abs(cubeletCoordVal - coordValue) < 0.1){
+            group.push(cubelets[i]);
         }
     }
     return group;
@@ -104,6 +108,82 @@ function placeStickersOnSide(face){
     }    
 }
 
+//normal vector in regard to cube. Probably there is a better way to do this.
+function getNormalVectorOfSticker(sticker){
+    var v = new THREE.Vector3(0, 0, 1);
+    v.applyEuler(sticker.rotation);
+    v.applyEuler(sticker.parent.rotation);
+    return v;
+}
+
+function round2(num){
+    return Math.round(num * 100) / 100;
+}
+
+//returns an array containing index of non-zero elements
+function indexesOfNotZero(v3){
+    var res = [];
+    var arr = v3.toArray();
+    for(let i = 0; i < arr.length; i++){
+        if(Math.abs(arr[i]) > 0.00001){
+            res.push(i);
+        }
+    }
+    return res;
+}
+
+function removeFromArr(arr, val){
+    const index = arr.indexOf(val);
+    if (index > -1) {
+      arr.splice(index, 1);
+    }
+}
+//this is global variable - bad
+var rotationAxis = null;
+
+//this function returns -1 if the user has chosen two cubelets that form invalid rotation, or
+//if the users has selected two stickers of same cubelet
+function getSideByTwoStickers(sticker1, sticker2){
+    if(sticker1.parent == sticker2.parent){
+        return -1;
+    }
+    var normal = getNormalVectorOfSticker(sticker1);
+    console.log(normal);
+
+    var cubelet1 = sticker1.parent;
+    var cubelet2 = sticker2.parent;
+    
+    var direction = cubelet2.position.clone().sub(cubelet1.position);
+    console.log(direction);
+    //TODO
+    var dot = direction.clone().normalize().dot(normal);
+    console.log(dot);
+    if(Math.abs(1 - Math.abs(dot)) < 0.001){
+        return -1;  
+    }
+    //direction is invalid if it has more than coordinate that is not (almost)zero
+    var nonZeroIdx = indexesOfNotZero(direction);
+
+    if(nonZeroIdx.length > 1){
+        return -1;
+    }
+    rotationAxis = normal.clone().cross(direction);
+    // console.log(rotationAxis);
+    var idx1 = nonZeroIdx[0];
+    var idx2 = indexesOfNotZero(normal)[0];
+
+    var axes = [0, 1, 2];
+
+    removeFromArr(axes, idx1);
+    removeFromArr(axes, idx2);
+    var axis = axes[0];
+    
+    var val = cubelet1.position.toArray()[axis];
+    return getSideByCoord(axis, val);
+}
+
+
+var clickedCubelet1 = null, clickedCubelet2 = null;
 
 const sideToAxes = {
     'F': new THREE.Vector3(0, 0, 1),
@@ -115,46 +195,38 @@ const sideToAxes = {
 }
 
 function getClosestAxis(side){
-    var axis = sideToAxes[side];
-    var basisX = new THREE.Vector3(0, 0, 0); //maps to 
-    var basisY = new THREE.Vector3(0, 0, 0);
-    var basisZ = new THREE.Vector3(0, 0, 0);
-
-    var matrix = cube.matrix;
-    matrix.extractBasis(basisX, basisY, basisZ);
-    var basisX_n = basisX.clone().negate();
-    var basisY_n = basisY.clone().negate();
-    var basisZ_n = basisZ.clone().negate();
-    
-    const sideToBases = {
-        'F': basisZ,
-        'B': basisZ_n,
-        'L': basisX_n,
-        'R': basisX,
-        'U': basisY,
-        'D': basisY_n,
-    }
+    //we need actually inverse but transpose will do since it is a rotation matrix only
+    var cubeMat = new THREE.Matrix4().copy(cube.matrix).transpose();
+    var axis = sideToAxes[side].clone();
+    axis.applyMatrix4(cubeMat);
 
     var smallestAngle = Math.PI;
     var closestAxis = null;
-    for(const side in sideToBases){
-        var basis = sideToBases[side];
-        var angle = Math.abs(basis.angleTo(axis));
-        
+
+    for(const s in sideToAxes){
+        var angle = Math.abs(axis.angleTo(sideToAxes[s]));        
         if(angle < smallestAngle){
             smallestAngle = angle;
-            closestAxis = side;
+            closestAxis = s;
         }
     }
     return closestAxis;
 }
 
-function rotateSide(side, angle){
-    var local = getSide(side);
+//a very ugly way to write this function but whatever. It can be called in two different ways:
+// first way: axis == null, side is one of 'U', 'L', 'R' etc
+//second way: side is array of cubelets and axis is non null.
+function rotateSide(side, angle, axis){
+    var local = null;
 
+    if(axis == null){
+        axis = sideToAxes[side];
+        local = getSide(side);
+    }else{
+        local = side;
+    }
     for(const el of local){
         const v = new THREE.Vector3(el.position.x, el.position.y, el.position.z);
-        var axis = sideToAxes[side];
         v.applyAxisAngle(axis, angle);
         el.position.set(v.x, v.y, v.z);
         el.rotateOnWorldAxis(axis, angle);
@@ -165,11 +237,78 @@ var canvas = renderer.domElement;
 canvas.addEventListener('mousemove', onMouseMove);
 var mouseDown = false;
 
-document.body.onmousedown = function() { 
-    mouseDown = true;
+
+function getClickedObjects(e){
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    var x, y;
+    if(e.type == 'touchstart' || e.type == 'touchmove' || e.type == 'touchend'){
+        var touch;
+        if(e.type == "touchend"){
+            if(!previousTouch){
+                return -1;
+            }
+            touch = previousTouch;
+        }else{
+            touch = e.touches[0];
+        }
+        // console.log("AAAAAAA");
+        x = touch.pageX;
+        y = touch.pageY;
+    } else if (e.type == 'mousedown' || e.type == 'mouseup') {
+        x = e.clientX;
+        y = e.clientY;
+    }
+    pointer.x = ( x / window.innerWidth ) * 2 - 1;
+	pointer.y = - (y / window.innerHeight ) * 2 + 1;
+
+    raycaster.setFromCamera( pointer, camera );
+
+    const intersects = raycaster.intersectObjects( scene.children );
+
+    if(e.type == "touchend"){
+        console.log(previousTouch.pageX);
+    }
+    return intersects;
 }
 
-document.body.onmouseup = function() {
+document.body.onmousedown = function(e) {
+    const intersects = getClickedObjects(e);
+    
+    if(intersects[0]){
+        if(clickedCubelet1 == null){
+            clickedCubelet1 = intersects[0];
+        }
+    }else{
+        mouseDown = true;
+    }
+}
+
+function secondStickerMouseUpCallback(e){
+    const intersects = getClickedObjects(e);
+    
+    if(clickedCubelet2 == null && clickedCubelet1 != null && intersects[0]){
+        clickedCubelet2 = intersects[0];
+        console.log(clickedCubelet1);
+        console.log(clickedCubelet2);
+        if(e.type == "touchend"){
+            console.log("ADDSD");
+        }
+        if(!animation && !scrambleAnimation){
+            sideToRotate = getSideByTwoStickers(clickedCubelet1.object, clickedCubelet2.object);
+            if(sideToRotate != -1){
+                turnDir = -1;
+                rotationAxis = rotationAxis.normalize();
+                animation = true;
+            }
+        }   
+        clickedCubelet2 = null;
+        clickedCubelet1 = null;
+    }
+}
+
+document.body.onmouseup = function(e) {
+    secondStickerMouseUpCallback(e);
     mouseDown = false;
 }
 
@@ -186,20 +325,39 @@ var previousTouch;
 
 document.body.addEventListener("keydown", onDocumentKeyDown, false);
 document.body.addEventListener("touchmove", onTouchMove);
+document.body.addEventListener("touchstart", onTouchStart);
+document.body.addEventListener("touchend", onTouchEnd);
+
 document.body.addEventListener("keyup", onDocumentKeyUp, false);
 
 document.body.addEventListener("touchend", (e) => {
     previousTouch = null;
 });
 
+function onTouchStart(e){
+    const intersects = getClickedObjects(e);
+    // console.log(intersects);
+    if(intersects[0]){
+        if(clickedCubelet1 == null){
+            clickedCubelet1 = intersects[0];
+        }
+    }
+}
+
+function onTouchEnd(e){
+    secondStickerMouseUpCallback(e);
+}
+
 function onTouchMove(e) {
     if (e.type == 'touchmove') {
         const touch = e.touches[0];
-        if (previousTouch) {
+        var intersects = getClickedObjects(e);
+
+        if (previousTouch && intersects.length == 0) {
             // be aware that these only store the movement of the first touch in the touches array
             e.movementX = touch.pageX - previousTouch.pageX;
             e.movementY = touch.pageY - previousTouch.pageY;
-            // console.log(e.movementX);
+
             cube.rotation.y += e.movementX * 0.005;
             cube.rotation.x += e.movementY * 0.005;
         };
@@ -220,7 +378,6 @@ function onDocumentKeyDown(event) {
 
     if (code >= 37 && code <= 40 && !animation && !scrambleAnimation) {
         sideToRotate = keyToFace[code];
-        console.log(isCtrlPressed);
         turnAnimation(sideToRotate)();
     }
 }
@@ -233,6 +390,7 @@ function onDocumentKeyUp(event) {
 }
 
 function onMouseMove(event) {
+    secondStickerMouseUpCallback(event);
     if(mouseDown) {
         cube.rotation.y += event.movementX * 0.005;
         cube.rotation.x += event.movementY * 0.005;
@@ -277,9 +435,6 @@ const myObject = {
 function turnAnimation(side){
     return function(){
         if(!animation && !scrambleAnimation){
-            
-            console.log(isCtrlPressed);
-
             if(isCtrlPressed){
                 turnDir = -1;
             }
@@ -306,17 +461,24 @@ const scrambleDuration = 10;
 const d_angle = -Math.PI/(2 * rotationDuration);
 const d_angle_scramble = -Math.PI/ (2 * scrambleDuration);
 
+var oldTime = 0;
+var clock = new THREE.Clock();
+var angle = 0;
 
 function animate( t ) {
+    delta = clock.getDelta();
+
     if(animation){
         if(rotationFrame < rotationDuration){
-            rotateSide(sideToRotate, d_angle * turnDir);
+            rotateSide(sideToRotate, d_angle * turnDir, rotationAxis);
             rotationFrame++;    
         }
         else{
             turnDir = 1;
             rotationFrame = 0;
             animation = false;
+            rotationAxis = null;
+
         }
     }
     else if(scrambleAnimation){
