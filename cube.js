@@ -1,15 +1,29 @@
 vaxInit();
             
-const cubeletSz = 5;
 camera.position.set(0,0,50); // Set position like this
 camera.lookAt(new THREE.Vector3(0,0,0)); // Set look at coordinate like this
 
+var n = 3;
+var half = Math.floor(n/2);
+var cubeletSz = 5/half;
+var gapSz = 0.1/half;
+var stickerSz = 4.5/ half;
 var cubelets = [];
 var cube = new THREE.Group();
+var stickerGeometry = new THREE.PlaneGeometry(stickerSz, stickerSz);
 
-var stickerGeometry = new THREE.PlaneGeometry(4.5, 4.5);
-
-function createCube(){
+function createCube(n){
+    scene.clear();
+    cube = new THREE.Group();
+    cubelets = [];
+    half = Math.floor(n/2);
+    cubeletSz = 5/half;
+    gapSz = 0.2/half;
+    stickerSz = 4.5/ half;
+    stickerGeometry = new THREE.PlaneGeometry(stickerSz, stickerSz);
+    scene.add(cube);
+    cube.rotateY(Math.PI/4);
+    console.log(gapSz);
     var boxSideGeometry = new THREE.BoxGeometry(cubeletSz, cubeletSz, cubeletSz);
     var boxSideMaterial = new THREE.MeshBasicMaterial({
         color: 'black',
@@ -18,12 +32,12 @@ function createCube(){
 
     var cubelet = new THREE.Mesh(boxSideGeometry, boxSideMaterial);
 
-    for(let i = -1; i < 2; i++){
-        for(let j = -1; j < 2; j++){
-            for(let k = -1; k < 2; k++){
+    for(let i = -half; i <= half; i++){
+        for(let j = -half; j <= half; j++){
+            for(let k = -half; k <= half; k++){
                 var newCubelet = cubelet.clone();
                 cubelets.push(newCubelet);
-                newCubelet.position.set(i * (cubeletSz + 0.5), j * (cubeletSz + 0.5), k * (cubeletSz + 0.5));
+                newCubelet.position.set(i * (cubeletSz + gapSz), j * (cubeletSz +gapSz), k * (cubeletSz + gapSz));
                 cube.add(newCubelet);
             }
         }
@@ -39,7 +53,6 @@ function createCube(){
 
 
 function getSide(side){
-    const gapSz = 0.5;
     const pos = cubeletSz + gapSz;
     //x -0, y - 1, z - 2
     var faceToAxis = {
@@ -52,12 +65,12 @@ function getSide(side){
     }
 
     var faceToCoordVal = {
-        'F': pos,
-        'B': -pos,
-        'U': pos,
-        'D' : -pos,
-        'L' : -pos,
-        'R' : pos
+        'F': pos * half,
+        'B': -pos * half,
+        'U': pos * half,
+        'D' : -pos * half,
+        'L' : -pos * half,
+        'R' : pos * half 
     }
 
     return getSideByCoord(faceToAxis[side], faceToCoordVal[side]);
@@ -89,23 +102,24 @@ function placeStickersOnSide(face){
         
         st.isSticker = true;
 
+        const pos = cubeletSz/2 + 0.1;
         if(face == 'F'){
-            st.position.set(0, 0, 2.6);
+            st.position.set(0, 0, pos);
         }else if(face == 'L'){
             st.rotation.set(0, -Math.PI/2, 0);
-            st.position.set(-2.6, 0, 0);
+            st.position.set(-pos, 0, 0);
         }else if(face == 'R'){
             st.rotation.set(0, Math.PI/2, 0);
-            st.position.set(2.6, 0, 0);
+            st.position.set(pos, 0, 0);
         }else if(face == 'B'){
             st.rotation.set(-Math.PI, 0, 0);
-            st.position.set(0, 0, -2.6);
+            st.position.set(0, 0, -pos);
         }else if(face == 'U'){
             st.rotation.set(-Math.PI/2, 0, 0);
-            st.position.set(0, 2.6, 0);
+            st.position.set(0, pos, 0);
         }else if(face == 'D'){
             st.rotation.set(Math.PI/2, 0, 0);
-            st.position.set(0, -2.6, 0);
+            st.position.set(0, -pos, 0);
         }
         s.add(st);
     }    
@@ -394,9 +408,7 @@ function onMouseMove(event) {
     }
 }
 
-createCube();
-scene.add(cube);
-cube.rotateY(Math.PI/4);
+createCube(n);
 
 var animation = false;
 var scrambleAnimation = false;
@@ -427,8 +439,17 @@ const myObject = {
     B : turnAnimation('B'),
     L : turnAnimation('L'), 
     R : turnAnimation('R'),
+    'Create 5x5 cube' : createNewCubeGui(5),
+    'Create 7x7 cube' : createNewCubeGui(7)
 };
 
+function createNewCubeGui(n){
+    // console.log();
+    return function(){
+        // scene.remove(cube);
+        createCube(n);
+    } 
+}
 function turnAnimation(side){
     return function(){
         if(!animation && !scrambleAnimation){
@@ -448,6 +469,9 @@ gui.add( myObject, 'F' ); // Button
 gui.add( myObject, 'B' ); // Button
 gui.add( myObject, 'L' ); // Button
 gui.add( myObject, 'R' ); // Button
+gui.add( myObject, 'Create 7x7 cube'); // Button
+gui.add( myObject, 'Create 5x5 cube'); // Button
+// gui.add( myObject, 'Create 3x3 cube'); // Button
 
 var rotationFrame = 0;
 const rotationDuration = 25;
