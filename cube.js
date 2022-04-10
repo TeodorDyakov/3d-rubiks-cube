@@ -82,10 +82,13 @@ function placeStickersOnSide(face){
     
     var side = getSide(face);
     var sticker = new THREE.Mesh(stickerGeometry, new THREE.MeshBasicMaterial({color:faceColors[face]}));
-    
+    sticker.isSticker = true;
+
     for(const s of side){
         var st = sticker.clone();
-    
+        
+        st.isSticker = true;
+
         if(face == 'F'){
             st.position.set(0, 0, 2.6);
         }else if(face == 'L'){
@@ -144,6 +147,10 @@ var rotationAxis = null;
 //this function returns -1 if the user has chosen two cubelets that form invalid rotation, or
 //if the users has selected two stickers of same cubelet
 function getSideByTwoStickers(sticker1, sticker2){
+    if(!sticker1.isSticker || !sticker2.isSticker){
+        return -1;
+    }
+
     if(sticker1.parent == sticker2.parent){
         return -1;
     }
@@ -157,7 +164,7 @@ function getSideByTwoStickers(sticker1, sticker2){
     console.log(direction);
     //TODO
     var dot = direction.clone().normalize().dot(normal);
-    console.log(dot);
+
     if(Math.abs(1 - Math.abs(dot)) < 0.001){
         return -1;  
     }
@@ -168,7 +175,7 @@ function getSideByTwoStickers(sticker1, sticker2){
         return -1;
     }
     rotationAxis = normal.clone().cross(direction);
-    // console.log(rotationAxis);
+
     var idx1 = nonZeroIdx[0];
     var idx2 = indexesOfNotZero(normal)[0];
 
@@ -252,7 +259,6 @@ function getClickedObjects(e){
         }else{
             touch = e.touches[0];
         }
-        // console.log("AAAAAAA");
         x = touch.pageX;
         y = touch.pageY;
     } else if (e.type == 'mousedown' || e.type == 'mouseup') {
@@ -265,10 +271,6 @@ function getClickedObjects(e){
     raycaster.setFromCamera( pointer, camera );
 
     const intersects = raycaster.intersectObjects( scene.children );
-
-    if(e.type == "touchend"){
-        console.log(previousTouch.pageX);
-    }
     return intersects;
 }
 
@@ -289,11 +291,7 @@ function secondStickerMouseUpCallback(e){
     
     if(clickedCubelet2 == null && clickedCubelet1 != null && intersects[0]){
         clickedCubelet2 = intersects[0];
-        console.log(clickedCubelet1);
-        console.log(clickedCubelet2);
-        if(e.type == "touchend"){
-            console.log("ADDSD");
-        }
+        
         if(!animation && !scrambleAnimation){
             sideToRotate = getSideByTwoStickers(clickedCubelet1.object, clickedCubelet2.object);
             if(sideToRotate != -1){
@@ -336,7 +334,6 @@ document.body.addEventListener("touchend", (e) => {
 
 function onTouchStart(e){
     const intersects = getClickedObjects(e);
-    // console.log(intersects);
     if(intersects[0]){
         if(clickedCubelet1 == null){
             clickedCubelet1 = intersects[0];
