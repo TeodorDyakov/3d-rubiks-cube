@@ -23,7 +23,7 @@ function createCube(n){
     stickerGeometry = new THREE.PlaneGeometry(stickerSz, stickerSz);
     scene.add(cube);
     cube.rotateY(Math.PI/4);
-    console.log(gapSz);
+
     var boxSideGeometry = new THREE.BoxGeometry(cubeletSz, cubeletSz, cubeletSz);
     var boxSideMaterial = new THREE.MeshBasicMaterial({
         color: 'black',
@@ -158,30 +158,47 @@ function removeFromArr(arr, val){
 //this is global variable - bad
 var rotationAxis = null;
 
+function closestAxis(vec){
+    var closest;
+    var maxDot = -100;
+    const axis = [
+        new THREE.Vector3(-1, 0, 0),
+        new THREE.Vector3(1, 0, 0),
+        new THREE.Vector3(0, 0, -1),
+        new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(0, -1, 0),
+        new THREE.Vector3(0, 0, 1)
+    ];
+    
+    for(const a of axis){
+        var dot = a.dot(vec);
+        if(dot > maxDot){
+            maxDot = dot;
+            closest = a;
+        }
+    }
+    return closest;
+}
 //this function returns -1 if the user has chosen two cubelets that form invalid rotation, or
 //if the users has selected two stickers of same cubelet
 function getSideByTwoStickers(sticker1, sticker2){
-    if(!sticker1.isSticker || !sticker2.isSticker){
+    if(!sticker1.object.isSticker || !sticker2.object.isSticker){
         return -1;
     }
 
-    if(sticker1.parent == sticker2.parent){
-        return -1;
+    if(sticker1.object.parent != sticker2.object.parent){
+        // return -1;
     }
-    var normal = getNormalVectorOfSticker(sticker1);
-    console.log(normal);
-
-    var cubelet1 = sticker1.parent;
-    var cubelet2 = sticker2.parent;
+    var point1 = sticker1.point;
+    var point2 = sticker2.point;
+    var mat = cube.matrix.clone().invert();
+    point1.applyMatrix4(mat);
+    point2.applyMatrix4(mat);
     
-    var direction = cubelet2.position.clone().sub(cubelet1.position);
-    console.log(direction);
-    //TODO
-    var dot = direction.clone().normalize().dot(normal);
+    var swipeVector = point2.sub(point1);
+    var direction = closestAxis(swipeVector);
+    var normal = getNormalVectorOfSticker(sticker1.object);
 
-    if(Math.abs(1 - Math.abs(dot)) < 0.001){
-        return -1;  
-    }
     //direction is invalid if it has more than coordinate that is not (almost)zero
     var nonZeroIdx = indexesOfNotZero(direction);
 
@@ -190,16 +207,9 @@ function getSideByTwoStickers(sticker1, sticker2){
     }
     rotationAxis = normal.clone().cross(direction);
 
-    var idx1 = nonZeroIdx[0];
-    var idx2 = indexesOfNotZero(normal)[0];
-
-    var axes = [0, 1, 2];
-
-    removeFromArr(axes, idx1);
-    removeFromArr(axes, idx2);
-    var axis = axes[0];
+    var axis = indexesOfNotZero(rotationAxis)[0];
     
-    var val = cubelet1.position.toArray()[axis];
+    var val = sticker1.object.parent.position.toArray()[axis];
     return getSideByCoord(axis, val);
 }
 
@@ -302,21 +312,22 @@ document.body.onmousedown = function(e) {
 
 function secondStickerMouseUpCallback(e){
     const intersects = getClickedObjects(e);
-    
-    if(clickedCubelet2 == null && clickedCubelet1 != null && intersects[0]){
+
+    if(!clickedCubelet2 && intersects[0] && intersects[0].object.isSticker){
         clickedCubelet2 = intersects[0];
-        
-        if(!animation && !scrambleAnimation){
-            sideToRotate = getSideByTwoStickers(clickedCubelet1.object, clickedCubelet2.object);
-            if(sideToRotate != -1){
-                turnDir = -1;
-                rotationAxis = rotationAxis.normalize();
-                animation = true;
-            }
-        }   
-        clickedCubelet2 = null;
-        clickedCubelet1 = null;
-    }
+    }   
+    
+
+    if(!animation && !scrambleAnimation){
+        sideToRotate = getSideByTwoStickers(clickedCubelet1, clickedCubelet2);
+        if(sideToRotate != -1){
+            turnDir = -1;
+            rotationAxis = rotationAxis.normalize();
+            animation = true;
+        }
+    }   
+    clickedCubelet2 = null;
+    clickedCubelet1 = null;
 }
 
 document.body.onmouseup = function(e) {
@@ -363,9 +374,13 @@ function onTouchMove(e) {
     if (e.type == 'touchmove') {
         const touch = e.touches[0];
         var intersects = getClickedObjects(e);
-
-        if (previousTouch && intersects.length == 0) {
-            // be aware that these only store the movement of the first touch in the touches array
+        if(clickedCubelet1 != null && intersects[0]){
+            if(intersects[0].object == clickedCubelet1.object){
+                clickedCubelet2 = intersects[0];
+            }
+        }
+        
+        if (previousTouch && !clickedCubelet1) {
             e.movementX = touch.pageX - previousTouch.pageX;
             e.movementY = touch.pageY - previousTouch.pageY;
 
@@ -401,7 +416,15 @@ function onDocumentKeyUp(event) {
 }
 
 function onMouseMove(event) {
-    secondStickerMouseUpCallback(event);
+    var intersects = getClickedObjects(event);
+    // console.log(clickedCubelet1);
+    // console.log(intersects);
+    if(clickedCubelet1 != null && intersects[0]){
+        if(intersects[0].object == clickedCubelet1.object){
+            clickedCubelet2 = intersects[0];
+            console.log(clickedCubelet2);
+        }
+    }
     if(mouseDown) {
         cube.rotation.y += event.movementX * 0.005;
         cube.rotation.x += event.movementY * 0.005;
@@ -444,9 +467,7 @@ const myObject = {
 };
 
 function createNewCubeGui(n){
-    // console.log();
     return function(){
-        // scene.remove(cube);
         createCube(n);
     } 
 }
