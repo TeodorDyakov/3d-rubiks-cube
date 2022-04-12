@@ -25,7 +25,7 @@ function createCube(n){
     cube.rotateY(Math.PI/4);
 
     var boxSideGeometry = new THREE.BoxGeometry(cubeletSz, cubeletSz, cubeletSz);
-    var boxSideMaterial = new THREE.MeshBasicMaterial({
+    var boxSideMaterial = new THREE.MeshPhongMaterial({
         color: 'black',
         shininess: 50
     });
@@ -182,6 +182,9 @@ function closestAxis(vec){
 //this function returns -1 if the user has chosen two cubelets that form invalid rotation, or
 //if the users has selected two stickers of same cubelet
 function getSideByTwoStickers(sticker1, sticker2){
+    if(!sticker1 || !sticker2){
+        return -1;
+    }
     if(!sticker1.object.isSticker || !sticker2.object.isSticker){
         return -1;
     }
@@ -258,15 +261,17 @@ function rotateSide(side, angle, axis){
     }
     for(const el of local){
         const v = new THREE.Vector3(el.position.x, el.position.y, el.position.z);
-        v.applyAxisAngle(axis, angle);
+        v.applyAxisAngle(axis,  turnDir * angle);
         el.position.set(v.x, v.y, v.z);
-        el.rotateOnWorldAxis(axis, angle);
+        el.rotateOnWorldAxis(axis, turnDir * angle);
     }
 }
 
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+
 var canvas = renderer.domElement;
 canvas.addEventListener('mousemove', onMouseMove);
-var mouseDown = false;
+var canOrbit = false;
 
 
 function getClickedObjects(e){
@@ -285,7 +290,7 @@ function getClickedObjects(e){
         }
         x = touch.pageX;
         y = touch.pageY;
-    } else if (e.type == 'mousedown' || e.type == 'mouseup') {
+    } else if (e.type == 'mousedown' || e.type == 'mouseup' || e.type == 'mousemove') {
         x = e.clientX;
         y = e.clientY;
     }
@@ -306,7 +311,7 @@ document.body.onmousedown = function(e) {
             clickedCubelet1 = intersects[0];
         }
     }else{
-        mouseDown = true;
+        canOrbit = true;
     }
 }
 
@@ -316,12 +321,11 @@ function secondStickerMouseUpCallback(e){
     if(!clickedCubelet2 && intersects[0] && intersects[0].object.isSticker){
         clickedCubelet2 = intersects[0];
     }   
-    
 
     if(!animation && !scrambleAnimation){
         sideToRotate = getSideByTwoStickers(clickedCubelet1, clickedCubelet2);
         if(sideToRotate != -1){
-            turnDir = -1;
+            turnDir = 1;
             rotationAxis = rotationAxis.normalize();
             animation = true;
         }
@@ -332,7 +336,7 @@ function secondStickerMouseUpCallback(e){
 
 document.body.onmouseup = function(e) {
     secondStickerMouseUpCallback(e);
-    mouseDown = false;
+    canOrbit = false;
 }
 
 var sideToRotate;
@@ -363,10 +367,13 @@ function onTouchStart(e){
         if(clickedCubelet1 == null){
             clickedCubelet1 = intersects[0];
         }
+    }else{
+        canOrbit = true;
     }
 }
 
 function onTouchEnd(e){
+    canOrbit = false;
     secondStickerMouseUpCallback(e);
 }
 
@@ -377,22 +384,22 @@ function onTouchMove(e) {
         if(clickedCubelet1 != null && intersects[0]){
             if(intersects[0].object == clickedCubelet1.object){
                 clickedCubelet2 = intersects[0];
+                secondStickerMouseUpCallback(e);
             }
         }
-        
-        if (previousTouch && !clickedCubelet1) {
+        if (canOrbit && previousTouch) {
             e.movementX = touch.pageX - previousTouch.pageX;
             e.movementY = touch.pageY - previousTouch.pageY;
 
             cube.rotation.y += e.movementX * 0.005;
             cube.rotation.x += e.movementY * 0.005;
-        };
+        }
 
         previousTouch = touch;
     }
 }
 
-var turnDir = 1;
+var turnDir = -1;
 var isCtrlPressed = 0;
 
 function onDocumentKeyDown(event) {
@@ -417,15 +424,14 @@ function onDocumentKeyUp(event) {
 
 function onMouseMove(event) {
     var intersects = getClickedObjects(event);
-    // console.log(clickedCubelet1);
-    // console.log(intersects);
     if(clickedCubelet1 != null && intersects[0]){
+        
         if(intersects[0].object == clickedCubelet1.object){
             clickedCubelet2 = intersects[0];
-            console.log(clickedCubelet2);
+            secondStickerMouseUpCallback(event);
         }
     }
-    if(mouseDown) {
+    if(canOrbit) {
         cube.rotation.y += event.movementX * 0.005;
         cube.rotation.x += event.movementY * 0.005;
     }
@@ -462,8 +468,9 @@ const myObject = {
     B : turnAnimation('B'),
     L : turnAnimation('L'), 
     R : turnAnimation('R'),
-    'Create 5x5 cube' : createNewCubeGui(5),
-    'Create 7x7 cube' : createNewCubeGui(7)
+    '3x3' : createNewCubeGui(3),
+    '5x5' : createNewCubeGui(5),
+    '7x7' : createNewCubeGui(7)
 };
 
 function createNewCubeGui(n){
@@ -475,7 +482,7 @@ function turnAnimation(side){
     return function(){
         if(!animation && !scrambleAnimation){
             if(isCtrlPressed){
-                turnDir = -1;
+                turnDir = 1;
             }
             sideToRotate = getClosestAxis(side);
             animation = true;
@@ -490,9 +497,9 @@ gui.add( myObject, 'F' ); // Button
 gui.add( myObject, 'B' ); // Button
 gui.add( myObject, 'L' ); // Button
 gui.add( myObject, 'R' ); // Button
-gui.add( myObject, 'Create 7x7 cube'); // Button
-gui.add( myObject, 'Create 5x5 cube'); // Button
-// gui.add( myObject, 'Create 3x3 cube'); // Button
+gui.add( myObject, '3x3'); // Button
+gui.add( myObject, '5x5'); // Button
+gui.add( myObject, '7x7'); // Button
 
 var rotationFrame = 0;
 const rotationDuration = 25;
@@ -509,18 +516,22 @@ var angle = 0;
 
 function animate( t ) {
     delta = clock.getDelta();
-
+    var d_angle = delta * 5;
+    // if(canOrbit){
+        controls.enabled = canOrbit;
+    // }
     if(animation){
-        if(rotationFrame < rotationDuration){
-            rotateSide(sideToRotate, d_angle * turnDir, rotationAxis);
-            rotationFrame++;    
+        if(angle + d_angle < Math.PI/2){
+            rotateSide(sideToRotate, d_angle, rotationAxis);
+            angle += d_angle;
         }
-        else{
-            turnDir = 1;
-            rotationFrame = 0;
-            animation = false;
-            rotationAxis = null;
 
+        else{
+            rotateSide(sideToRotate, Math.PI/2 - angle, rotationAxis);
+            animation = false;
+            turnDir = -1;
+            angle = 0;
+            rotationAxis = null;
         }
     }
     else if(scrambleAnimation){
