@@ -26,13 +26,13 @@ function createCube(n){
     gapSz = 0.2/half;
     stickerSz = 4.8/ half;
     scene.add(cube);
-    cube.rotateY(Math.PI/4);
+    // cube.rotateY(Math.PI/4);
     
     animation = false;
     scrambleAnimation = false;
     scrambleFrame = 0;
     scrambleIdx = 0;
-    
+
     var boxSideGeometry = new THREE.BoxGeometry(cubeletSz, cubeletSz, cubeletSz);
     var boxSideMaterial = new THREE.MeshBasicMaterial({color:'black'});
 
@@ -245,10 +245,14 @@ const sideToAxes = {
 
 function getClosestAxis(side){
     //we need actually inverse but transpose will do since it is a rotation matrix only
-    var cubeMat = new THREE.Matrix4().copy(cube.matrix).transpose();
+    // var cubeMat = new THREE.Matrix4().copy(cube.matrix);
+    var cubeMat = (camera.matrix.extractRotation(new THREE.Matrix4()));
+    // var cubeMat = new THREE.Matrix4().copy(camera.matrix).invert();
+    console.log(cubeMat);
     var axis = sideToAxes[side].clone();
     axis.applyMatrix4(cubeMat);
-
+    console.log(axis);
+    // axis.add(new THREE.Vector3(0, 0, -60));
     var smallestAngle = Math.PI;
     var closestAxis = null;
 

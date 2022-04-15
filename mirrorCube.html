@@ -25,7 +25,7 @@
             const mid = 19;
             const halfMid = mid / 2;
             const gap = 1;
-
+            
             const map = {
                 'x': { 0 : 13, 1 : 19, 2 : 25},
                 'y': { 0 : 29, 1 : 19, 2 : 9},
@@ -41,11 +41,10 @@
                         var zs = map['z'][z];
 
                         var boxGeometry = new THREE.BoxGeometry(xs, ys, zs);
-                        var material = new THREE.MeshPhongMaterial({color : 0xbbbbb, shininess : 200});
+                        var material = new THREE.MeshPhongMaterial({color : 'gray', shininess : 200});
                         var mesh = new THREE.Mesh(boxGeometry, material);
                         mesh.position.set((xs/2 + halfMid + gap) * (x - 1), (ys/2 + halfMid + gap) * (y - 1), (zs/2 + halfMid + gap) * (z - 1));
                         mesh.virtual = new THREE.Vector3(x-1, y-1, z-1);
-                        // mesh.virtual = true;
                         cube.add(mesh);
                     }
                 }
@@ -61,53 +60,187 @@
                 return side;
             }
 
-            function rotateSide(coord, value, angle){
-                var arr = [0, 0, 0];
-                arr[coord] = 1;
-                var axis = new THREE.Vector3().fromArray(arr);
-                console.log(axis);
-                var side = selectSide(coord, value);
-                // var d_angle = Math.PI/20;
-                
-                var total = 0;
-                for(const el of side){
-                    el.virtual.applyAxisAngle(axis, angle);
-                    el.virtual.round();
-                }
-                
-                return function(d_angle){
-                    var end = false;
-                    if(total + d_angle > angle){
-                        end = true;
-                        d_angle = angle - total;
-                    }                    
-                    for(const el of side){
-                        const v = new THREE.Vector3(el.position.x, el.position.y, el.position.z);
-                        v.applyAxisAngle(axis, d_angle);
-                        el.position.set(v.x, v.y, v.z);
-                        el.rotateOnWorldAxis(axis, d_angle);
+            function getNormalVectorOfSticker(sticker){
+                var v = new THREE.Vector3(0, 0, 1);
+                v.applyEuler(sticker.rotation);
+                v.applyEuler(sticker.parent.rotation);
+                return v.round();
+            }
+
+            const coords = [0, 1, 2, 0, 1, 2];
+            const vals = [1, 1, 1, -1, -1, -1];
+            // const colors = ["red", "yellow", "blue", "orange", "white", "green"];
+
+            var stickers = [];
+
+            for(let i = 0; i < 6; i++){
+                let axis = coords[i];
+                let val = vals[i];
+                let side = selectSide(axis, val);
+
+                for(const cubie of side){
+                    var sticker = null;
+                    var stickerGeometry = null;
+                    var material  = new THREE.MeshBasicMaterial();
+
+                    if(axis == 2) {
+                        let w = cubie.geometry.parameters.width - 1;
+                        let h = cubie.geometry.parameters.height - 1;
+                        stickerGeometry = new THREE.PlaneGeometry(w, h);
+                        sticker = new THREE.Mesh(stickerGeometry, material);
+                        sticker.position.setComponent(axis, val * (cubie.geometry.parameters.depth/2 + 0.1));
+                        
+                        if(val == -1)
+                            sticker.rotation.set(-Math.PI, 0, 0);
                     }
-                    total += d_angle;
-                    return end;
+                    else if(axis == 1) {
+                        let w = cubie.geometry.parameters.width - 1;
+                        let h = cubie.geometry.parameters.depth - 1;
+                        stickerGeometry = new THREE.PlaneGeometry(w, h);
+                        sticker = new THREE.Mesh(stickerGeometry, material);
+                        sticker.position.setComponent(axis, val * (cubie.geometry.parameters.height/2 + 0.1));
+                        sticker.rotation.set(val * -Math.PI/2, 0, 0);
+                    }
+                    else if(axis == 0){
+                        let w = cubie.geometry.parameters.depth - 1;
+                        let h = cubie.geometry.parameters.height - 1;
+                        stickerGeometry = new THREE.PlaneGeometry(w, h);
+                        sticker = new THREE.Mesh(stickerGeometry, material);
+                        sticker.position.setComponent(axis, val * (cubie.geometry.parameters.width/2 + 0.1));
+                        sticker.rotation.set(0, val * Math.PI/2, 0);
+                    }
+                    sticker.isSticker = true;
+                    stickers.push(sticker);
+
+                    cubie.add(sticker);
+                }   
+            }
+
+            function colorStickers(){
+                // -1 == -x, -2 == -y, -3 == -z
+                const axisToColor = { 
+                    '-1' : "red",
+                    '-2' : "yellow",
+                    '-3' : "blue",
+                    '1' : "orange",
+                    '2' : "white",
+                    '3' : "green"
+                };
+
+                for(const sticker of stickers){
+                    const normal = getNormalVectorOfSticker(sticker);
+                    const arr = [0, 0, 0];
+                    normal.toArray(arr);
+                    
+                    var axisStr = null;
+
+                    for(let i = 0; i < arr.length; i++){
+                        if(arr[i] != 0){
+                            axisStr = arr[i] * (i + 1);
+                            break;
+                        }   
+                    }
+                    sticker.material.color.set(axisToColor[axisStr]);
                 }
             }
 
+
+            class Move {                                
+
+                constructor(coord, value, angle) {
+                    this.coord = coord;
+                    this.value = value;
+                    this.angle = angle;
+                }
+
+                initMove(){
+                    var arr = [0, 0, 0];
+                    arr[this.coord] = 1;
+                    this.axis = new THREE.Vector3().fromArray(arr);
+                    this.side = selectSide(this.coord, this.value);
+
+                    this.total = 0;
+
+                    for(const el of this.side){
+                        el.virtual.applyAxisAngle(this.axis, this.angle);
+                        el.virtual.round();
+                    }
+                }
+
+                rotateSide(d_angle){
+                    if(this.angle < 0){
+                        d_angle *= -1;
+                    }
+                    var end = false;
+                    if(Math.abs(this.total + d_angle) > Math.abs(this.angle)){
+                        end = true;
+                        d_angle = this.angle - this.total;
+                    }                    
+                    for(const el of this.side){
+                        const v = new THREE.Vector3(el.position.x, el.position.y, el.position.z);
+                        v.applyAxisAngle(this.axis, d_angle);
+                        el.position.set(v.x, v.y, v.z);
+                        el.rotateOnWorldAxis(this.axis, d_angle);
+                    }
+                    this.total += d_angle;
+                    return end;
+                }
+            }
+            
+            //randomly Shuffle The cube and return a stack of inverse moves(functions)
+            function randomShuffle(){
+                
+                var moves = [];
+
+                for(let i = 0; i < 20; i++) {
+                    var axis = THREE.MathUtils.randInt(0, 2);
+                    var val = THREE.MathUtils.randInt(0, 2);
+                    var move = new Move(axis, val, Math.PI / 2);
+                    move.initMove();
+                    move.rotateSide(Math.PI / 2);
+                    moves.push(new Move(axis, val, -Math.PI / 2));
+                }
+
+                return moves;
+            }
+
+            var moves = randomShuffle();
+            
+            colorStickers();
+
             var cnt = 0;
 
-            // console.log(selectSide(0, -1));
             scene.add(cube);
             var oldT = 0;
-            rotateFunction = rotateSide(0, 0, Math.PI/2);
-            console.log(rotateFunction);
+            var end = true;
+            var move = null;
+            var rotateFunction = null;
+            
+            console.log(moves[19].axis);
+            console.log(moves[19].side);
+
+            var clock = new THREE.Clock();
+
+
             function animate( t ) {
-                var delta = t - oldT;
-                oldT = t;
-                var end = rotateFunction(delta* 3);
-                if(end){
-                    rotateFunction = rotateSide(THREE.MathUtils.randInt(0,2),THREE.MathUtils.randInt(0,2), Math.PI/2);
-                    end = false;
+                
+                cube.rotation.set(t/3, t/2, t/4);
+
+                if(t < 5){
+                    return;
                 }
-                cube.rotation.set(t/3, t/4, t/5);
+
+                delta = clock.getDelta() * 3;
+
+                if(end){
+                    if(moves.length != 0){
+                        move = moves.pop();
+                        move.initMove();
+                        end = move.rotateSide(delta);
+                    }
+                }else{
+                    end = move.rotateSide(delta);
+                }                
             }
         </script>
     </body>
