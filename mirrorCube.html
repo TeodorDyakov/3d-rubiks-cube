@@ -10,12 +10,65 @@
         
         <script src="lib/three.min.js"></script>
         <script src="lib/lil-gui.umd.min.js"></script>
-        <script src="lib/vax.js"></script>
+        <script src="OrbitControls.js"></script>
 
     </head>
     
     <body>
         <script>
+            var renderer, scene, camera, light, stats, t, animate;
+
+
+            function vaxInit()
+            {
+                renderer = new THREE.WebGLRenderer( {antialias: true} );
+                document.body.appendChild( renderer.domElement );
+                document.body.style.margin = 0;
+                document.body.style.overflow = 'hidden';
+                
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x9B59B6);
+
+                camera = new THREE.PerspectiveCamera( 60, 1, 20, 1000 );
+
+                camera.lookAt(new THREE.Vector3(0,0,0));
+                
+                light = new THREE.PointLight();
+                light.position.set(0,150,300);
+                scene.add( light );
+                
+                window.addEventListener( 'resize', onWindowResize, false );
+                onWindowResize();
+                
+                renderer.setAnimationLoop( frame );
+            }
+
+
+            function onWindowResize( event )
+            {
+                camera.aspect = window.innerWidth/window.innerHeight;
+                camera.updateProjectionMatrix();
+
+                renderer.setSize( window.innerWidth, window.innerHeight, true );
+            }			
+
+
+            var oldTime = 0;
+            var accTime = 0;
+            function frame( time )
+            {
+                // защита от прекалено голяма скорост, при по-бързи компютри някои анимации
+                // ще са прекалено бързи, затова изкуствено се забавя до 60 fps
+                accTime += time-oldTime;
+                oldTime = time;
+                if( accTime < 1000/60 ) return;
+                accTime = 0;
+                
+                if( animate ) animate( time/1000 );
+                
+                renderer.render( scene, camera );
+            }
+
             vaxInit();
 
             camera.position.set(0,50,200); // Set position like this
@@ -207,7 +260,7 @@
             var moves = randomShuffle();
             
             colorStickers();
-
+            
             var cnt = 0;
 
             scene.add(cube);
@@ -215,22 +268,30 @@
             var end = true;
             var move = null;
             var rotateFunction = null;
-            
-            console.log(moves[19].axis);
-            console.log(moves[19].side);
+
 
             var clock = new THREE.Clock();
 
+            var oldT = 0;
+
+            cube.rotation.set(0, Math.PI, 0);
+
+            const controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+            controls.enabled = true;
 
             function animate( t ) {
-                
-                cube.rotation.set(t/3, t/2, t/4);
+                var delta = t - oldT;
+                oldT = t;
+                delta *= 5;
+                // cube.rotation.set(t/2, t, 0);
 
                 if(t < 5){
                     return;
                 }
 
-                delta = clock.getDelta() * 3;
+                // delta = clock.getDelta() * 10;
+                controls.update();
 
                 if(end){
                     if(moves.length != 0){
